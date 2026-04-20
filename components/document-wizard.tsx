@@ -98,6 +98,35 @@ function getStatusDotClasses(status?: ValidationStatus) {
   return "bg-line";
 }
 
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none">
+      <path
+        d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none">
+      <path
+        d="M4 8h3l2-3h6l2 3h3v11H4z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13.5" r="3.5" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 function LogoMark({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-3">
@@ -701,16 +730,32 @@ export function DocumentWizard() {
               Regla: {currentDocument.rule}
             </p>
 
-            <label className="mt-5 block rounded-lg border border-dashed border-brand/60 bg-orange-50 px-4 py-5 text-center transition hover:bg-orange-100">
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                onChange={(event) => handleFileChange(currentDocument.id, event.target.files)}
-                className="sr-only"
-              />
-              <span className="block text-sm font-black text-brand">Seleccionar archivo</span>
-              <span className="mt-1 block text-xs text-muted">PDF, JPG, PNG o WEBP</span>
-            </label>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-brand/60 bg-orange-50 px-4 py-5 text-center text-brand transition hover:bg-orange-100">
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={(event) => handleFileChange(currentDocument.id, event.target.files)}
+                  className="sr-only"
+                />
+                <UploadIcon />
+                <span className="mt-2 block text-sm font-black">Cargar archivo</span>
+                <span className="mt-1 block text-xs text-muted">PDF, JPG, PNG o WEBP</span>
+              </label>
+
+              <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border border-line bg-paper px-4 py-5 text-center text-ink transition hover:border-brand hover:bg-orange-50">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(event) => handleFileChange(currentDocument.id, event.target.files)}
+                  className="sr-only"
+                />
+                <CameraIcon />
+                <span className="mt-2 block text-sm font-black">Tomar fotografia</span>
+                <span className="mt-1 block text-xs text-muted">Usar camara del telefono</span>
+              </label>
+            </div>
 
             {state?.fileName ? (
               <div className="mt-4 rounded-lg border border-line bg-paper p-3 text-sm text-muted">
