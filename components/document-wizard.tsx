@@ -129,7 +129,7 @@ function CameraIcon() {
 
 function LogoMark({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-3">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/lafa-logo.svg"
@@ -151,11 +151,11 @@ function ProgressBar({ currentStep }: { currentStep: StepId }) {
   const progress = ((activeIndex + 1) / steps.length) * 100;
 
   return (
-    <div className="sticky top-0 z-20 border-b border-line bg-surface/95 px-4 py-3 shadow-sm backdrop-blur">
-      <div className="mx-auto max-w-5xl">
+    <div className="sticky top-0 z-20 w-full overflow-hidden border-b border-line bg-surface/95 px-4 py-3 shadow-sm backdrop-blur">
+      <div className="mx-auto max-w-5xl min-w-0">
         <div className="flex items-center justify-between gap-3">
           <LogoMark compact />
-          <p className="rounded-full border border-line bg-paper px-3 py-1 text-xs font-bold text-muted">
+          <p className="shrink-0 rounded-full border border-line bg-paper px-3 py-1 text-xs font-bold text-muted">
             Paso {activeIndex + 1} de {steps.length}
           </p>
         </div>
@@ -165,9 +165,12 @@ function ProgressBar({ currentStep }: { currentStep: StepId }) {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="mt-2 grid grid-cols-5 gap-1 text-[10px] font-semibold text-muted">
+        <div className="mt-2 grid min-w-0 grid-cols-5 gap-1 text-[10px] font-semibold text-muted">
           {steps.map((step, index) => (
-            <span key={step.id} className={index <= activeIndex ? "text-ink" : ""}>
+            <span
+              key={step.id}
+              className={`min-w-0 truncate ${index <= activeIndex ? "text-ink" : ""}`}
+            >
               {step.label}
             </span>
           ))}
@@ -672,7 +675,7 @@ export function DocumentWizard() {
           key={document.id}
           type="button"
           onClick={() => setCurrentDocumentIndex(index)}
-          className={`w-36 shrink-0 rounded-lg border px-3 py-3 text-left transition lg:w-full ${
+          className={`w-32 shrink-0 rounded-lg border px-3 py-3 text-left transition sm:w-36 lg:w-full ${
             isActive
               ? "border-brand bg-orange-50 shadow-sm"
               : "border-line bg-surface hover:border-brand/50"
@@ -698,21 +701,23 @@ export function DocumentWizard() {
     });
 
     return (
-      <section className="px-4 py-6">
-        <div className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[0.75fr_1.25fr]">
-          <aside className="order-1 lg:order-1">
-            <div className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+      <section className="w-full overflow-hidden px-4 py-6">
+        <div className="mx-auto grid max-w-5xl min-w-0 gap-5 lg:grid-cols-[0.75fr_1.25fr]">
+          <aside className="order-1 min-w-0 lg:order-1">
+            <div className="min-w-0 rounded-lg border border-line bg-surface p-4 shadow-sm">
               <p className="text-sm font-black text-ink">Avance de documentos</p>
               <p className="mt-1 text-sm text-muted">
                 {completedCount} de {DOCUMENTS.length} revisados
               </p>
-              <div className="mt-4 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 lg:mx-0 lg:block lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0">
-                {documentButtons}
+              <div className="-mx-4 mt-4 max-w-[100vw] overflow-x-auto px-4 pb-2 lg:mx-0 lg:max-w-none lg:overflow-visible lg:px-0 lg:pb-0">
+                <div className="flex w-max max-w-none gap-2 lg:block lg:w-full lg:space-y-2">
+                  {documentButtons}
+                </div>
               </div>
             </div>
           </aside>
 
-          <div className="order-2 rounded-lg border border-line bg-surface p-5 shadow-soft lg:order-2">
+          <div className="order-2 min-w-0 rounded-lg border border-line bg-surface p-5 shadow-soft lg:order-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-wide text-brand">
@@ -730,8 +735,8 @@ export function DocumentWizard() {
               Regla: {currentDocument.rule}
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-brand/60 bg-orange-50 px-4 py-5 text-center text-brand transition hover:bg-orange-100">
+            <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">
+              <label className="flex min-h-24 min-w-0 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-brand/60 bg-orange-50 px-4 py-5 text-center text-brand transition hover:bg-orange-100">
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
@@ -743,7 +748,7 @@ export function DocumentWizard() {
                 <span className="mt-1 block text-xs text-muted">PDF, JPG, PNG o WEBP</span>
               </label>
 
-              <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border border-line bg-paper px-4 py-5 text-center text-ink transition hover:border-brand hover:bg-orange-50">
+              <label className="flex min-h-24 min-w-0 cursor-pointer flex-col items-center justify-center rounded-lg border border-line bg-paper px-4 py-5 text-center text-ink transition hover:border-brand hover:bg-orange-50">
                 <input
                   type="file"
                   accept="image/*"
