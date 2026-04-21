@@ -37,7 +37,7 @@ Aplicacion web mobile-first para capturar datos de un candidato, validar documen
 - Acta: nombre coincide con datos personales.
 - CURP: nombre coincide y documento legible.
 - RFC: QR, regimen de sueldos y salarios, vigencia no mayor a 3 meses.
-- NSS: debe ser comprobante, no carnet.
+- NSS: debe ser comprobante oficial de asignacion/localizacion, hoja rosa o comprobante digital del IMSS; no cartilla, carnet, credencial, gafete ni tarjeta medica aunque muestre el NSS.
 - Comprobante de domicilio: debe ser legible y parecer valido.
 - Banco: debe mostrar cuenta o CLABE y parecer documento bancario.
 

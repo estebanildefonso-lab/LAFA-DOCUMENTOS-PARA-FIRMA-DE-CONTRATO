@@ -84,19 +84,24 @@ export const DOCUMENTS: DocumentRequirement[] = [
     id: "nss",
     title: "Numero de Seguridad Social",
     shortTitle: "NSS",
-    description: "Sube el comprobante oficial de NSS.",
-    rule: "Debe ser comprobante oficial de NSS; no debe ser carnet, credencial o tarjeta.",
+    description: "Sube el comprobante oficial de NSS, hoja rosa o comprobante digital del IMSS.",
+    rule: "Debe ser comprobante oficial de asignacion/localizacion de NSS; no debe ser cartilla, carnet, credencial, gafete o tarjeta medica del IMSS.",
     validationChecklist: [
       "Debe corresponder a comprobante, asignacion o localizacion del Numero de Seguridad Social.",
-      "Debe parecer emitido por IMSS o portal oficial equivalente.",
-      "Debe mostrar NSS o numero de seguridad social, normalmente de 11 digitos.",
+      "Acepta la llamada hoja rosa, hoja de afiliacion, comprobante digital, constancia o formato equivalente del IMSS solo si su finalidad principal es comprobar el NSS.",
+      "Debe parecer emitido por IMSS, portal oficial IMSS Digital o un formato oficial equivalente.",
+      "Debe mostrar NSS, Numero de Seguridad Social o numero de afiliacion, normalmente de 11 digitos.",
       "Debe contener el nombre de la persona y coincidir con los datos capturados cuando sea visible.",
       "Debe ser legible en nombre y numero.",
-      "Debe rechazarse si es solo carnet, credencial, tarjeta, foto de gafete o documento que no sea comprobante."
+      "Debe rechazarse si es cartilla del IMSS, carnet de citas, carnet de salud, credencial, tarjeta medica, foto de gafete o documento de atencion medica aunque muestre nombre o NSS.",
+      "Senales de cartilla/carnet IMSS que deben rechazarse: Agregado Medico, Unidad Medica, UMF, consultorio, horario, fotografia, identificacion, datos generales, domicilio, lugar y fecha de nacimiento, PREVENIMSS, cedula original, sello digital o secuencia notarial.",
+      "Si el documento muestra No. Seg Social o NSS pero su formato principal es de cartilla, carnet, citas o atencion medica, usa rechazado.",
+      "Si solo aparece un numero parecido a NSS dentro de otro documento que no es comprobante de asignacion/localizacion, usa rechazado."
     ],
     notRequired: [
       "No exijas CURP, RFC, comprobante de domicilio ni datos bancarios en el NSS.",
       "No rechaces por no mostrar regimen fiscal, QR fiscal, acta o nombres de padres.",
+      "No rechaces solo porque el comprobante actual no sea literalmente de color rosa.",
       "La ausencia de otros documentos no afecta esta validacion."
     ]
   },
