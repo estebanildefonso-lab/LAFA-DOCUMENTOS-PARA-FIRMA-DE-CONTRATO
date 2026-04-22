@@ -10,6 +10,7 @@ const CSV_HEADER = [
   "folio",
   "fecha",
   "nombre_candidato",
+  "curp",
   "tipo_documento",
   "archivo",
   "resultado",
@@ -23,6 +24,7 @@ export type CsvLogRow = {
   folio: string;
   fecha: string;
   nombreCandidato: string;
+  curp: string | null;
   documentType: DocumentType;
   tipoDocumento: string;
   archivo: string;
@@ -70,6 +72,7 @@ function rowToCsv(row: CsvLogRow) {
     row.folio,
     row.fecha,
     row.nombreCandidato,
+    row.curp || "",
     row.tipoDocumento,
     row.archivo,
     row.resultado,

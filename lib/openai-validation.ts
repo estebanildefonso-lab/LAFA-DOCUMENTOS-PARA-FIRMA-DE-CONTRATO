@@ -1,4 +1,9 @@
-import { getDocumentRequirement, formatCandidateName } from "@/lib/documents";
+import {
+  formatCandidateName,
+  getDocumentRequirement,
+  namesMatchIgnoringOrder,
+  normalizeNameForComparison
+} from "@/lib/documents";
 import type { CandidateData, DocumentType, ValidationResult, ValidationStatus } from "@/lib/types";
 
 type OpenAIValidationParams = {
@@ -43,6 +48,9 @@ const validationSchema = {
     nombre_detectado: {
       anyOf: [{ type: "string" }, { type: "null" }]
     },
+    curp_detectada: {
+      anyOf: [{ type: "string" }, { type: "null" }]
+    },
     observaciones: { type: "string" }
   },
   required: [
@@ -52,9 +60,20 @@ const validationSchema = {
     "puede_continuar",
     "motivos",
     "nombre_detectado",
+    "curp_detectada",
     "observaciones"
   ]
 };
+
+const CURP_PATTERN = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
+const DOCUMENTS_REQUIRING_NAME_MATCH: DocumentType[] = [
+  "acta_nacimiento",
+  "ine",
+  "curp",
+  "rfc",
+  "nss",
+  "estado_cuenta_bancario"
+];
 
 function inferMimeType(fileName: string, mimeType: string) {
   if (mimeType && mimeType !== "application/octet-stream") return mimeType;
@@ -87,6 +106,24 @@ function normalizeStringList(value: unknown) {
     .slice(0, 8);
 }
 
+function normalizeCurp(value: unknown) {
+  if (typeof value !== "string") return null;
+  const curp = value.replace(/[^a-zA-Z0-9]/g, "").trim().toUpperCase();
+  return CURP_PATTERN.test(curp) ? curp : null;
+}
+
+function appendObservation(current: string, addition: string) {
+  const base = current.trim();
+  if (!base || base === "Sin observaciones adicionales.") return addition;
+  if (base.includes(addition)) return base;
+  return `${base} ${addition}`;
+}
+
+function uniqueMotivos(motivos: string[], nextMotivo: string) {
+  if (motivos.includes(nextMotivo)) return motivos;
+  return [...motivos, nextMotivo].slice(0, 8);
+}
+
 function sanitizeValidation(raw: RawValidation, fallbackType: string): ValidationResult {
   const estado = normalizeStatus(raw.estado_validacion);
   const score = clampScore(raw.score_confianza);
@@ -106,10 +143,60 @@ function sanitizeValidation(raw: RawValidation, fallbackType: string): Validatio
       typeof raw.nombre_detectado === "string" && raw.nombre_detectado.trim()
         ? raw.nombre_detectado.trim()
         : null,
+    curp_detectada: normalizeCurp(raw.curp_detectada),
     observaciones:
       typeof raw.observaciones === "string" && raw.observaciones.trim()
         ? raw.observaciones.trim()
         : "Sin observaciones adicionales."
+  };
+}
+
+function applyLocalNameCheck(
+  validation: ValidationResult,
+  params: OpenAIValidationParams
+): ValidationResult {
+  if (
+    !validation.nombre_detectado ||
+    !DOCUMENTS_REQUIRING_NAME_MATCH.includes(params.documentType)
+  ) {
+    return validation;
+  }
+
+  const candidateName = formatCandidateName(params.candidate);
+  const detectedName = validation.nombre_detectado;
+  const namesMatch = namesMatchIgnoringOrder(candidateName, detectedName);
+
+  if (namesMatch) {
+    const sameOrder =
+      normalizeNameForComparison(candidateName) === normalizeNameForComparison(detectedName);
+
+    if (sameOrder) {
+      return validation;
+    }
+
+    return {
+      ...validation,
+      observaciones: appendObservation(
+        validation.observaciones,
+        "El nombre coincide con el registro aunque venia en otro orden; se usara exactamente el orden detectado en el documento para el CSV."
+      )
+    };
+  }
+
+  return {
+    ...validation,
+    estado_validacion:
+      validation.estado_validacion === "aprobado" ? "requiere_revision" : validation.estado_validacion,
+    score_confianza: Math.min(validation.score_confianza, 0.65),
+    puede_continuar: false,
+    motivos: uniqueMotivos(
+      validation.motivos,
+      "El nombre detectado en el documento no coincide con el nombre capturado en el registro."
+    ),
+    observaciones: appendObservation(
+      validation.observaciones,
+      `Nombre capturado: ${candidateName}. Nombre detectado: ${detectedName}.`
+    )
   };
 }
 
@@ -156,6 +243,11 @@ function buildPrompt(params: OpenAIValidationParams) {
     "Analiza el archivo adjunto y responde solo con JSON valido conforme al esquema.",
     "Cada archivo se valida de forma independiente.",
     "No estas validando un expediente completo; estas validando solo el documento actual.",
+    "Cuando compares nombres, considera coincidencia si contienen las mismas palabras normalizadas aunque el registro o el documento muestre apellidos y nombres en distinto orden.",
+    "Devuelve nombre_detectado exactamente como aparece en el apartado de nombre del documento oficial, conservando ese orden aunque sea apellidos antes de nombres.",
+    "Si el nombre coincide solo por reordenamiento, no lo rechaces por orden; considera que es la misma persona y conserva en nombre_detectado el orden del documento.",
+    "Si el documento es INE/IFE, el apartado NOMBRE de la credencial es la fuente oficial para el nombre_detectado.",
+    "Si el documento muestra una CURP de 18 caracteres, extraela en curp_detectada. Si no aparece claramente, usa null.",
     "",
     `Fecha actual: ${today}`,
     `Tipo esperado: ${expectedTitle}`,
@@ -190,6 +282,7 @@ function localMissingApiKeyResult(documentType: DocumentType): ValidationResult 
     puede_continuar: false,
     motivos: ["OPENAI_API_KEY no esta configurada en el servidor."],
     nombre_detectado: null,
+    curp_detectada: null,
     observaciones:
       "La aplicacion funciona localmente, pero necesita credenciales de OpenAI para validar documentos reales."
   };
@@ -219,6 +312,7 @@ function buildOpenAIErrorResult(
       puede_continuar: false,
       motivos: ["Tu cuenta o proyecto de OpenAI no tiene cuota o saldo disponible."],
       nombre_detectado: null,
+      curp_detectada: null,
       observaciones:
         "Revisa Billing y Usage en OpenAI. Agrega creditos, metodo de pago o aumenta el limite mensual del proyecto antes de reintentar."
     };
@@ -232,6 +326,7 @@ function buildOpenAIErrorResult(
       puede_continuar: false,
       motivos: ["La API key de OpenAI es invalida o fue revocada."],
       nombre_detectado: null,
+      curp_detectada: null,
       observaciones: "Genera una nueva API key, guardala en .env.local y reinicia el servidor."
     };
   }
@@ -244,6 +339,7 @@ function buildOpenAIErrorResult(
       puede_continuar: false,
       motivos: ["El modelo configurado en OPENAI_MODEL no esta disponible para esta cuenta."],
       nombre_detectado: null,
+      curp_detectada: null,
       observaciones: "Cambia OPENAI_MODEL por un modelo disponible para tu proyecto y reinicia el servidor."
     };
   }
@@ -255,6 +351,7 @@ function buildOpenAIErrorResult(
     puede_continuar: false,
     motivos: [`OpenAI no pudo procesar el documento. Codigo HTTP ${status}.`],
     nombre_detectado: null,
+    curp_detectada: null,
     observaciones: message.slice(0, 500) || "Respuesta no exitosa de OpenAI."
   };
 }
@@ -326,7 +423,10 @@ export async function validateDocumentWithOpenAI(
   const outputText = extractOutputText(payload);
 
   try {
-    return sanitizeValidation(JSON.parse(outputText) as RawValidation, requirement?.title || params.documentType);
+    return applyLocalNameCheck(
+      sanitizeValidation(JSON.parse(outputText) as RawValidation, requirement?.title || params.documentType),
+      params
+    );
   } catch {
     return {
       tipo_documento: requirement?.title || params.documentType,
@@ -335,6 +435,7 @@ export async function validateDocumentWithOpenAI(
       puede_continuar: false,
       motivos: ["La respuesta de OpenAI no tuvo JSON valido."],
       nombre_detectado: null,
+      curp_detectada: null,
       observaciones: outputText.slice(0, 500) || "Sin contenido interpretable."
     };
   }

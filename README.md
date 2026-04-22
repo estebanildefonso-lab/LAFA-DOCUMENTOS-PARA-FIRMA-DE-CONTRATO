@@ -26,6 +26,7 @@ Aplicacion web mobile-first para capturar datos de un candidato, validar documen
 ## Documentos
 
 - Acta de nacimiento
+- INE
 - CURP
 - RFC
 - NSS
@@ -35,6 +36,7 @@ Aplicacion web mobile-first para capturar datos de un candidato, validar documen
 ## Reglas de validacion usadas por OpenAI
 
 - Acta: nombre coincide con datos personales.
+- INE: identificacion oficial legible; el nombre detectado se usa como nombre oficial cuando coincide aunque este en otro orden.
 - CURP: nombre coincide y documento legible.
 - RFC: QR, regimen de sueldos y salarios, vigencia no mayor a 3 meses.
 - NSS: debe ser comprobante oficial de asignacion/localizacion, hoja rosa o comprobante digital del IMSS; no cartilla, carnet, credencial, gafete ni tarjeta medica aunque muestre el NSS.
@@ -116,12 +118,14 @@ folio
 fecha_creacion
 fecha_actualizacion
 nombre_candidato
+curp
 ```
 
 Por cada documento agrega columnas como:
 
 ```text
 estado AN, score AN, archivo AN, observaciones AN, motivos AN, subido_drive AN, link AN
+estado INE, score INE, archivo INE, observaciones INE, motivos INE, subido_drive INE, link INE
 estado CURP, score CURP, archivo CURP, observaciones CURP, motivos CURP, subido_drive CURP, link CURP
 estado RFC, score RFC, archivo RFC, observaciones RFC, motivos RFC, subido_drive RFC, link RFC
 estado NSS, score NSS, archivo NSS, observaciones NSS, motivos NSS, subido_drive NSS, link NSS
@@ -163,6 +167,7 @@ La ruta `/api/documents/validate-and-upload` pide a OpenAI un JSON con esta form
   "puede_continuar": true,
   "motivos": ["Documento legible", "Regimen detectado"],
   "nombre_detectado": "NOMBRE DEL CANDIDATO",
+  "curp_detectada": "ABCD010203HDFRRS09",
   "observaciones": "Cumple con los criterios configurados."
 }
 ```
@@ -194,5 +199,5 @@ npm run typecheck
 
 - Las llaves de OpenAI y Google se usan solo en rutas server-side.
 - Los archivos rechazados no se guardan en la carpeta final de aprobados.
-- El log CSV registra una fila por candidato y actualiza las columnas del documento revalidado.
+- El log CSV registra una fila por candidato, actualiza las columnas del documento revalidado y conserva la CURP detectada cuando el documento la muestra claramente.
 - El navegador guarda temporalmente datos y resultados en `localStorage` para continuar la captura.

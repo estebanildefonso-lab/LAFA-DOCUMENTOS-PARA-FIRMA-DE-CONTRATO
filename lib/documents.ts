@@ -42,6 +42,26 @@ export const DOCUMENTS: DocumentRequirement[] = [
     ]
   },
   {
+    id: "ine",
+    title: "Identificacion oficial INE",
+    shortTitle: "INE",
+    description: "Sube la credencial para votar INE o IFE vigente.",
+    rule: "Debe parecer credencial para votar INE/IFE oficial, legible, y el nombre debe coincidir.",
+    validationChecklist: [
+      "Debe corresponder a una credencial para votar INE o IFE, no a otro documento.",
+      "Debe mostrar elementos propios de identificacion oficial como fotografia, nombre, instituto/emisor, clave de elector, OCR, vigencia, firma, domicilio o datos similares.",
+      "Debe contener el nombre completo de la persona y coincidir con los datos capturados aunque el orden sea distinto.",
+      "Devuelve nombre_detectado exactamente con el orden en que aparece en el apartado de nombre de la INE.",
+      "Debe ser legible en el apartado de nombre y datos principales.",
+      "Si la vigencia aparece vencida o no es legible, usa requiere_revision."
+    ],
+    notRequired: [
+      "No exijas CURP, RFC, NSS, comprobante de domicilio ni datos bancarios en la INE.",
+      "No rechaces por no mostrar regimen fiscal, cuenta, CLABE o nombres de padres.",
+      "La ausencia de otros documentos no afecta esta validacion."
+    ]
+  },
+  {
     id: "curp",
     title: "CURP",
     shortTitle: "CURP",
@@ -160,6 +180,46 @@ export function formatCandidateName(candidate: {
     .map((part) => part.trim())
     .filter(Boolean)
     .join(" ");
+}
+
+export function normalizeNameForComparison(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function nameTokenCounts(value: string) {
+  return normalizeNameForComparison(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .reduce<Record<string, number>>((counts, token) => {
+      counts[token] = (counts[token] || 0) + 1;
+      return counts;
+    }, {});
+}
+
+export function namesMatchIgnoringOrder(firstName: string, secondName: string) {
+  const firstCounts = nameTokenCounts(firstName);
+  const secondCounts = nameTokenCounts(secondName);
+  const firstTokens = Object.keys(firstCounts);
+  const secondTokens = Object.keys(secondCounts);
+
+  if (!firstTokens.length || firstTokens.length !== secondTokens.length) {
+    return false;
+  }
+
+  return firstTokens.every((token) => firstCounts[token] === secondCounts[token]);
+}
+
+export function preferDetectedNameOrder(candidateName: string, detectedName: string | null) {
+  if (!detectedName || !namesMatchIgnoringOrder(candidateName, detectedName)) {
+    return candidateName;
+  }
+
+  return detectedName.trim();
 }
 
 export function normalizeForFolio(value: string) {

@@ -4,7 +4,8 @@ import {
   DOCUMENTS,
   MAX_FILE_SIZE_BYTES,
   formatCandidateName,
-  getDocumentRequirement
+  getDocumentRequirement,
+  preferDetectedNameOrder
 } from "@/lib/documents";
 import { processDocumentWithAppsScript } from "@/lib/apps-script-drive";
 import { appendValidationLog, uploadApprovedDocument } from "@/lib/google-drive";
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     const file = formData.get("file");
     const folioValue = formData.get("folio");
     const documentTypeValue = formData.get("documentType");
+    const officialCandidateNameValue = formData.get("officialCandidateName");
     const candidate = parseCandidate(formData.get("candidate"));
 
     if (!(file instanceof File)) {
@@ -95,7 +97,11 @@ export async function POST(request: Request) {
     const requirement = getDocumentRequirement(documentType);
     const mimeType = inferMimeType(file);
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const candidateName = formatCandidateName(candidate);
+    const capturedCandidateName = formatCandidateName(candidate);
+    const officialCandidateName =
+      typeof officialCandidateNameValue === "string" && officialCandidateNameValue.trim()
+        ? officialCandidateNameValue.trim()
+        : "";
 
     const validation = await validateDocumentWithOpenAI({
       documentType,
@@ -104,11 +110,16 @@ export async function POST(request: Request) {
       mimeType,
       fileBuffer
     });
+    const candidateName =
+      officialCandidateName && documentType !== "ine"
+        ? officialCandidateName
+        : preferDetectedNameOrder(capturedCandidateName, validation.nombre_detectado);
 
     const logRow = {
       folio: folioValue,
       fecha: new Date().toISOString(),
       nombreCandidato: candidateName,
+      curp: validation.curp_detectada,
       documentType,
       tipoDocumento: validation.tipo_documento,
       archivo: file.name,

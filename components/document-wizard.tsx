@@ -6,6 +6,7 @@ import {
   DOCUMENTS,
   MAX_FILE_SIZE_BYTES,
   formatCandidateName,
+  namesMatchIgnoringOrder,
   normalizeForFolio
 } from "@/lib/documents";
 import type {
@@ -34,6 +35,7 @@ type StoredFlow = {
   folio: string;
   consentAccepted: boolean;
   candidate: CandidateData;
+  officialCandidateName?: string;
   documentStates: Partial<Record<DocumentType, DocumentState>>;
   currentDocumentIndex: number;
 };
@@ -225,6 +227,11 @@ function ValidationPanel({ result }: { result: ValidationResult }) {
           Nombre detectado: <span className="font-semibold">{result.nombre_detectado}</span>
         </p>
       ) : null}
+      {result.curp_detectada ? (
+        <p className="mt-2 text-sm">
+          CURP detectada: <span className="font-semibold">{result.curp_detectada}</span>
+        </p>
+      ) : null}
       {result.motivos.length ? (
         <ul className="mt-3 space-y-1 text-sm">
           {result.motivos.map((motivo) => (
@@ -242,6 +249,7 @@ export function DocumentWizard() {
   const [folio, setFolio] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [candidate, setCandidate] = useState<CandidateData>(initialCandidate);
+  const [officialCandidateName, setOfficialCandidateName] = useState("");
   const [documentStates, setDocumentStates] = useState<
     Partial<Record<DocumentType, DocumentState>>
   >({});
@@ -253,7 +261,8 @@ export function DocumentWizard() {
   const [isHydrated, setIsHydrated] = useState(false);
 
   const currentDocument = DOCUMENTS[currentDocumentIndex];
-  const candidateName = useMemo(() => formatCandidateName(candidate), [candidate]);
+  const registeredCandidateName = useMemo(() => formatCandidateName(candidate), [candidate]);
+  const candidateName = officialCandidateName || registeredCandidateName;
   const completedCount = DOCUMENTS.filter((document) => documentStates[document.id]?.validation)
     .length;
   const approvedCount = DOCUMENTS.filter(
@@ -268,6 +277,7 @@ export function DocumentWizard() {
         setFolio(parsed.folio || makeFolio());
         setConsentAccepted(Boolean(parsed.consentAccepted));
         setCandidate(parsed.candidate || initialCandidate);
+        setOfficialCandidateName(parsed.officialCandidateName || "");
         setDocumentStates(parsed.documentStates || {});
         setCurrentDocumentIndex(parsed.currentDocumentIndex || 0);
       } catch {
@@ -285,11 +295,20 @@ export function DocumentWizard() {
       folio,
       consentAccepted,
       candidate,
+      officialCandidateName,
       documentStates,
       currentDocumentIndex
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [candidate, consentAccepted, currentDocumentIndex, documentStates, folio, isHydrated]);
+  }, [
+    candidate,
+    consentAccepted,
+    currentDocumentIndex,
+    documentStates,
+    folio,
+    isHydrated,
+    officialCandidateName
+  ]);
 
   useEffect(() => {
     previewsRef.current = previews;
@@ -305,6 +324,7 @@ export function DocumentWizard() {
 
   function updateCandidate(id: keyof CandidateData, value: string) {
     setCandidate((current) => ({ ...current, [id]: value }));
+    setOfficialCandidateName("");
     setFormError("");
   }
 
@@ -324,7 +344,7 @@ export function DocumentWizard() {
       return;
     }
 
-    if (!folio.includes(normalizeForFolio(candidateName).slice(0, 8))) {
+    if (!folio.includes(normalizeForFolio(registeredCandidateName).slice(0, 8))) {
       setFolio(makeFolio(candidate));
     }
     goTo("documentos");
@@ -400,6 +420,9 @@ export function DocumentWizard() {
       formData.append("folio", folio);
       formData.append("documentType", currentDocument.id);
       formData.append("candidate", JSON.stringify(candidate));
+      if (officialCandidateName) {
+        formData.append("officialCandidateName", officialCandidateName);
+      }
 
       const response = await fetch("/api/documents/validate-and-upload", {
         method: "POST",
@@ -410,6 +433,14 @@ export function DocumentWizard() {
 
       if (!response.ok || "error" in payload) {
         throw new Error("error" in payload ? payload.error : "No se pudo validar el documento.");
+      }
+
+      if (
+        currentDocument.id === "ine" &&
+        payload.validation.nombre_detectado &&
+        namesMatchIgnoringOrder(registeredCandidateName, payload.validation.nombre_detectado)
+      ) {
+        setOfficialCandidateName(payload.validation.nombre_detectado.trim());
       }
 
       setDocumentStates((current) => ({
@@ -446,6 +477,7 @@ export function DocumentWizard() {
     setFolio(nextFolio);
     setConsentAccepted(false);
     setCandidate(initialCandidate);
+    setOfficialCandidateName("");
     setDocumentStates({});
     setFiles({});
     setPreviews({});

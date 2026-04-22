@@ -80,6 +80,7 @@ export async function processDocumentWithAppsScript(params: AppsScriptProcessPar
         folio: params.folio,
         fecha: params.logRow.fecha,
         nombreCandidato: params.candidateName,
+        curp: params.logRow.curp || "",
         documentType: params.documentType,
         tipoDocumento: params.validation.tipo_documento || params.documentTitle,
         fileName: `${params.documentTitle} - ${params.fileName}`,

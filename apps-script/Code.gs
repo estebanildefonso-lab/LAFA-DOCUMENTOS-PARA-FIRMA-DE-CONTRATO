@@ -1,10 +1,11 @@
 const SECRET = "PEGA_AQUI_EL_MISMO_SECRET_DE_RAILWAY";
-const SCRIPT_VERSION = "csv-por-candidato-v2-2026-04-20";
+const SCRIPT_VERSION = "csv-por-candidato-v4-2026-04-22";
 const APPROVED_FOLDER_ID = "1c-ZnEzPKntiSt8mOTwgXjs7k_US_LtCX";
 const LOG_FOLDER_ID = "1zW32uufou3i6BU2tb-RLJIZ2w0Ti7PeQ";
 const LOG_FILE_NAME = "documentos-contratacion-log.csv";
 const DOCUMENT_COLUMNS = {
   acta_nacimiento: "AN",
+  ine: "INE",
   curp: "CURP",
   rfc: "RFC",
   nss: "NSS",
@@ -45,6 +46,7 @@ function doPost(e) {
       folio: body.folio,
       fecha: body.fecha,
       nombreCandidato: body.nombreCandidato,
+      curp: body.curp,
       documentType: body.documentType,
       tipoDocumento: body.tipoDocumento,
       archivo: body.fileName,
@@ -119,7 +121,10 @@ function upsertCandidateCsvLog(logFolder, row) {
     const code = DOCUMENT_COLUMNS[row.documentType] || sanitizeColumnCode(row.tipoDocumento);
 
     record.folio = folio;
-    record.nombre_candidato = row.nombreCandidato || record.nombre_candidato;
+    if (row.documentType === "ine" || !record.nombre_candidato) {
+      record.nombre_candidato = row.nombreCandidato || record.nombre_candidato;
+    }
+    record.curp = normalizeCurp(row.curp) || record.curp;
     record.fecha_creacion = record.fecha_creacion || row.fecha;
     record.fecha_actualizacion = row.fecha;
     record["estado " + code] = row.resultado || "";
@@ -144,8 +149,8 @@ function upsertCandidateCsvLog(logFolder, row) {
 }
 
 function buildCandidateHeader() {
-  const header = ["folio", "fecha_creacion", "fecha_actualizacion", "nombre_candidato"];
-  const codes = ["AN", "CURP", "RFC", "NSS", "DOM", "BANCO"];
+  const header = ["folio", "fecha_creacion", "fecha_actualizacion", "nombre_candidato", "curp"];
+  const codes = ["AN", "INE", "CURP", "RFC", "NSS", "DOM", "BANCO"];
 
   codes.forEach(function (code) {
     header.push("estado " + code);
@@ -292,6 +297,15 @@ function formatScore(value) {
   }
 
   return number.toFixed(2);
+}
+
+function normalizeCurp(value) {
+  const curp = String(value || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .trim()
+    .toUpperCase();
+
+  return /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(curp) ? curp : "";
 }
 
 function sanitizeColumnCode(value) {

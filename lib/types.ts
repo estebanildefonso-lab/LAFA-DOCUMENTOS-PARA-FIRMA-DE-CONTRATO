@@ -1,5 +1,6 @@
 export type DocumentType =
   | "acta_nacimiento"
+  | "ine"
   | "curp"
   | "rfc"
   | "nss"
@@ -21,6 +22,7 @@ export type ValidationResult = {
   puede_continuar: boolean;
   motivos: string[];
   nombre_detectado: string | null;
+  curp_detectada: string | null;
   observaciones: string;
 };
 
