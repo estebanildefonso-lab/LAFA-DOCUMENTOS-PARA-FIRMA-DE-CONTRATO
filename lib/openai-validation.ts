@@ -68,7 +68,6 @@ const validationSchema = {
 const CURP_PATTERN = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
 const DOCUMENTS_REQUIRING_NAME_MATCH: DocumentType[] = [
   "acta_nacimiento",
-  "ine",
   "curp",
   "rfc",
   "nss",
@@ -124,6 +123,18 @@ function uniqueMotivos(motivos: string[], nextMotivo: string) {
   return [...motivos, nextMotivo].slice(0, 8);
 }
 
+function downgradeForReview(validation: ValidationResult, motivo: string, observacion: string) {
+  return {
+    ...validation,
+    estado_validacion:
+      validation.estado_validacion === "aprobado" ? "requiere_revision" : validation.estado_validacion,
+    score_confianza: Math.min(validation.score_confianza, 0.65),
+    puede_continuar: false,
+    motivos: uniqueMotivos(validation.motivos, motivo),
+    observaciones: appendObservation(validation.observaciones, observacion)
+  };
+}
+
 function sanitizeValidation(raw: RawValidation, fallbackType: string): ValidationResult {
   const estado = normalizeStatus(raw.estado_validacion);
   const score = clampScore(raw.score_confianza);
@@ -155,15 +166,35 @@ function applyLocalNameCheck(
   validation: ValidationResult,
   params: OpenAIValidationParams
 ): ValidationResult {
+  let nextValidation = validation;
+
+  if (params.documentType === "curp") {
+    if (!nextValidation.curp_detectada) {
+      nextValidation = downgradeForReview(
+        nextValidation,
+        "No se pudo extraer una CURP completa y valida del documento.",
+        "Sube una constancia CURP legible donde se vea completa la clave de 18 caracteres."
+      );
+    }
+
+    if (!nextValidation.nombre_detectado) {
+      nextValidation = downgradeForReview(
+        nextValidation,
+        "No se pudo leer el nombre completo en la constancia CURP.",
+        "Sube una constancia CURP legible donde se vea el nombre completo."
+      );
+    }
+  }
+
   if (
-    !validation.nombre_detectado ||
+    !nextValidation.nombre_detectado ||
     !DOCUMENTS_REQUIRING_NAME_MATCH.includes(params.documentType)
   ) {
-    return validation;
+    return nextValidation;
   }
 
   const candidateName = formatCandidateName(params.candidate);
-  const detectedName = validation.nombre_detectado;
+  const detectedName = nextValidation.nombre_detectado;
   const namesMatch = namesMatchIgnoringOrder(candidateName, detectedName);
 
   if (namesMatch) {
@@ -175,29 +206,23 @@ function applyLocalNameCheck(
     }
 
     return {
-      ...validation,
+      ...nextValidation,
       observaciones: appendObservation(
-        validation.observaciones,
+        nextValidation.observaciones,
         "El nombre coincide con el registro aunque venia en otro orden; se usara exactamente el orden detectado en el documento para el CSV."
       )
     };
   }
 
-  return {
-    ...validation,
-    estado_validacion:
-      validation.estado_validacion === "aprobado" ? "requiere_revision" : validation.estado_validacion,
-    score_confianza: Math.min(validation.score_confianza, 0.65),
-    puede_continuar: false,
-    motivos: uniqueMotivos(
-      validation.motivos,
-      "El nombre detectado en el documento no coincide con el nombre capturado en el registro."
-    ),
-    observaciones: appendObservation(
-      validation.observaciones,
-      `Nombre capturado: ${candidateName}. Nombre detectado: ${detectedName}.`
-    )
-  };
+  return downgradeForReview(
+    nextValidation,
+    params.documentType === "curp"
+      ? "El nombre de la CURP no coincide con el nombre capturado en el registro."
+      : "El nombre detectado en el documento no coincide con el nombre capturado en el registro.",
+    params.documentType === "curp"
+      ? `Corrige los datos personales al inicio del registro para que incluyan el nombre completo de la CURP. Nombre capturado: ${candidateName}. Nombre en CURP: ${detectedName}.`
+      : `Nombre capturado: ${candidateName}. Nombre detectado: ${detectedName}.`
+  );
 }
 
 function extractOutputText(payload: unknown) {
@@ -244,10 +269,11 @@ function buildPrompt(params: OpenAIValidationParams) {
     "Cada archivo se valida de forma independiente.",
     "No estas validando un expediente completo; estas validando solo el documento actual.",
     "Cuando compares nombres, considera coincidencia si contienen las mismas palabras normalizadas aunque el registro o el documento muestre apellidos y nombres en distinto orden.",
-    "Devuelve nombre_detectado exactamente como aparece en el apartado de nombre del documento oficial, conservando ese orden aunque sea apellidos antes de nombres.",
+    "Devuelve nombre_detectado como el nombre completo que aparece en el documento oficial.",
     "Si el nombre coincide solo por reordenamiento, no lo rechaces por orden; considera que es la misma persona y conserva en nombre_detectado el orden del documento.",
-    "Si el documento es INE/IFE, el apartado NOMBRE de la credencial es la fuente oficial para el nombre_detectado.",
-    "Si el documento muestra una CURP de 18 caracteres, extraela en curp_detectada. Si no aparece claramente, usa null.",
+    "Si el documento es CURP, extrae curp_detectada con la clave completa de 18 caracteres y extrae nombre_detectado con el nombre completo que aparece en la constancia.",
+    "Si el documento CURP muestra que al nombre capturado le falta un nombre, apellido o palabra del nombre oficial, usa requiere_revision y explica que debe corregirse al inicio del registro.",
+    "Si cualquier documento muestra una CURP de 18 caracteres, extraela en curp_detectada. Si no aparece claramente, usa null.",
     "",
     `Fecha actual: ${today}`,
     `Tipo esperado: ${expectedTitle}`,

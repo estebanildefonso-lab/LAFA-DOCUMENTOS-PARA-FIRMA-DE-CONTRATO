@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const file = formData.get("file");
     const folioValue = formData.get("folio");
     const documentTypeValue = formData.get("documentType");
-    const officialCandidateNameValue = formData.get("officialCandidateName");
+    const curpCandidateNameValue = formData.get("curpCandidateName");
     const candidate = parseCandidate(formData.get("candidate"));
 
     if (!(file instanceof File)) {
@@ -98,9 +98,9 @@ export async function POST(request: Request) {
     const mimeType = inferMimeType(file);
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const capturedCandidateName = formatCandidateName(candidate);
-    const officialCandidateName =
-      typeof officialCandidateNameValue === "string" && officialCandidateNameValue.trim()
-        ? officialCandidateNameValue.trim()
+    const curpCandidateName =
+      typeof curpCandidateNameValue === "string" && curpCandidateNameValue.trim()
+        ? curpCandidateNameValue.trim()
         : "";
 
     const validation = await validateDocumentWithOpenAI({
@@ -110,10 +110,12 @@ export async function POST(request: Request) {
       mimeType,
       fileBuffer
     });
-    const candidateName =
-      officialCandidateName && documentType !== "ine"
-        ? officialCandidateName
-        : preferDetectedNameOrder(capturedCandidateName, validation.nombre_detectado);
+    let candidateName = capturedCandidateName;
+    if (curpCandidateName && documentType !== "curp") {
+      candidateName = curpCandidateName;
+    } else if (documentType === "curp") {
+      candidateName = preferDetectedNameOrder(capturedCandidateName, validation.nombre_detectado);
+    }
 
     const logRow = {
       folio: folioValue,

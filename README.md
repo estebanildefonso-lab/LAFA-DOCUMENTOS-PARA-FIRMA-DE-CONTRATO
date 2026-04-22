@@ -26,7 +26,6 @@ Aplicacion web mobile-first para capturar datos de un candidato, validar documen
 ## Documentos
 
 - Acta de nacimiento
-- INE
 - CURP
 - RFC
 - NSS
@@ -36,8 +35,7 @@ Aplicacion web mobile-first para capturar datos de un candidato, validar documen
 ## Reglas de validacion usadas por OpenAI
 
 - Acta: nombre coincide con datos personales.
-- INE: identificacion oficial legible; el nombre detectado se usa como nombre oficial cuando coincide aunque este en otro orden.
-- CURP: nombre coincide y documento legible.
+- CURP: extrae la CURP completa, valida el nombre oficial y pide corregir el registro si falta un nombre o apellido.
 - RFC: QR, regimen de sueldos y salarios, vigencia no mayor a 3 meses.
 - NSS: debe ser comprobante oficial de asignacion/localizacion, hoja rosa o comprobante digital del IMSS; no cartilla, carnet, credencial, gafete ni tarjeta medica aunque muestre el NSS.
 - Comprobante de domicilio: debe ser legible y parecer valido.
@@ -118,14 +116,13 @@ folio
 fecha_creacion
 fecha_actualizacion
 nombre_candidato
-curp
+CURP
 ```
 
 Por cada documento agrega columnas como:
 
 ```text
 estado AN, score AN, archivo AN, observaciones AN, motivos AN, subido_drive AN, link AN
-estado INE, score INE, archivo INE, observaciones INE, motivos INE, subido_drive INE, link INE
 estado CURP, score CURP, archivo CURP, observaciones CURP, motivos CURP, subido_drive CURP, link CURP
 estado RFC, score RFC, archivo RFC, observaciones RFC, motivos RFC, subido_drive RFC, link RFC
 estado NSS, score NSS, archivo NSS, observaciones NSS, motivos NSS, subido_drive NSS, link NSS

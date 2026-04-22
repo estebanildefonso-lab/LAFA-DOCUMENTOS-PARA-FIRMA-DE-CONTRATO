@@ -10,7 +10,7 @@ const CSV_HEADER = [
   "folio",
   "fecha",
   "nombre_candidato",
-  "curp",
+  "CURP",
   "tipo_documento",
   "archivo",
   "resultado",

@@ -1,11 +1,10 @@
 const SECRET = "PEGA_AQUI_EL_MISMO_SECRET_DE_RAILWAY";
-const SCRIPT_VERSION = "csv-por-candidato-v4-2026-04-22";
+const SCRIPT_VERSION = "csv-por-candidato-v5-2026-04-22";
 const APPROVED_FOLDER_ID = "1c-ZnEzPKntiSt8mOTwgXjs7k_US_LtCX";
 const LOG_FOLDER_ID = "1zW32uufou3i6BU2tb-RLJIZ2w0Ti7PeQ";
 const LOG_FILE_NAME = "documentos-contratacion-log.csv";
 const DOCUMENT_COLUMNS = {
   acta_nacimiento: "AN",
-  ine: "INE",
   curp: "CURP",
   rfc: "RFC",
   nss: "NSS",
@@ -121,10 +120,10 @@ function upsertCandidateCsvLog(logFolder, row) {
     const code = DOCUMENT_COLUMNS[row.documentType] || sanitizeColumnCode(row.tipoDocumento);
 
     record.folio = folio;
-    if (row.documentType === "ine" || !record.nombre_candidato) {
+    if (row.documentType === "curp" || !record.nombre_candidato) {
       record.nombre_candidato = row.nombreCandidato || record.nombre_candidato;
     }
-    record.curp = normalizeCurp(row.curp) || record.curp;
+    record.CURP = normalizeCurp(row.curp) || record.CURP;
     record.fecha_creacion = record.fecha_creacion || row.fecha;
     record.fecha_actualizacion = row.fecha;
     record["estado " + code] = row.resultado || "";
@@ -149,8 +148,8 @@ function upsertCandidateCsvLog(logFolder, row) {
 }
 
 function buildCandidateHeader() {
-  const header = ["folio", "fecha_creacion", "fecha_actualizacion", "nombre_candidato", "curp"];
-  const codes = ["AN", "INE", "CURP", "RFC", "NSS", "DOM", "BANCO"];
+  const header = ["folio", "fecha_creacion", "fecha_actualizacion", "nombre_candidato", "CURP"];
+  const codes = ["AN", "CURP", "RFC", "NSS", "DOM", "BANCO"];
 
   codes.forEach(function (code) {
     header.push("estado " + code);
@@ -215,6 +214,8 @@ function csvRowsToRecords(rows) {
       header.forEach(function (column, index) {
         if (CSV_HEADER.indexOf(column) >= 0) {
           record[column] = row[index] || "";
+        } else if (column === "curp") {
+          record.CURP = row[index] || "";
         }
       });
 

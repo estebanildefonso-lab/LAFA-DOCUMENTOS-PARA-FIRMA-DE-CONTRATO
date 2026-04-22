@@ -42,35 +42,17 @@ export const DOCUMENTS: DocumentRequirement[] = [
     ]
   },
   {
-    id: "ine",
-    title: "Identificacion oficial INE",
-    shortTitle: "INE",
-    description: "Sube la credencial para votar INE o IFE vigente.",
-    rule: "Debe parecer credencial para votar INE/IFE oficial, legible, y el nombre debe coincidir.",
-    validationChecklist: [
-      "Debe corresponder a una credencial para votar INE o IFE, no a otro documento.",
-      "Debe mostrar elementos propios de identificacion oficial como fotografia, nombre, instituto/emisor, clave de elector, OCR, vigencia, firma, domicilio o datos similares.",
-      "Debe contener el nombre completo de la persona y coincidir con los datos capturados aunque el orden sea distinto.",
-      "Devuelve nombre_detectado exactamente con el orden en que aparece en el apartado de nombre de la INE.",
-      "Debe ser legible en el apartado de nombre y datos principales.",
-      "Si la vigencia aparece vencida o no es legible, usa requiere_revision."
-    ],
-    notRequired: [
-      "No exijas CURP, RFC, NSS, comprobante de domicilio ni datos bancarios en la INE.",
-      "No rechaces por no mostrar regimen fiscal, cuenta, CLABE o nombres de padres.",
-      "La ausencia de otros documentos no afecta esta validacion."
-    ]
-  },
-  {
     id: "curp",
     title: "CURP",
     shortTitle: "CURP",
     description: "Sube el documento oficial de CURP.",
-    rule: "Debe ser constancia/documento de CURP, legible, y el nombre debe coincidir.",
+    rule: "Debe ser constancia/documento de CURP, legible, mostrar CURP completa, y el nombre debe coincidir.",
     validationChecklist: [
       "Debe corresponder a una constancia o documento oficial de CURP.",
       "Debe mostrar una CURP de 18 caracteres con formato valido aparente.",
-      "Debe contener el nombre completo de la persona y coincidir con los datos capturados.",
+      "Debe extraer la CURP completa en curp_detectada.",
+      "Debe contener el nombre completo de la persona y coincidir con los datos capturados aunque el orden sea distinto.",
+      "Devuelve nombre_detectado como nombre completo oficial segun la constancia CURP.",
       "Debe ser legible en nombre, CURP y datos principales.",
       "Puede contener codigo QR, codigo de barras o sello, pero no es obligatorio si el documento luce oficial."
     ],

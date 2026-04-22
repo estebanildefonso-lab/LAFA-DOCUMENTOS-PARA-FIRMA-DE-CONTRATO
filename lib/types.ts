@@ -1,6 +1,5 @@
 export type DocumentType =
   | "acta_nacimiento"
-  | "ine"
   | "curp"
   | "rfc"
   | "nss"
